@@ -174,7 +174,7 @@
                 })
             });
             const data = await res.json();
-            const result = JSON.parse(cleanJson(data.result));
+            const result = parseResult(data.result);
             
             showResult(result.dish, result.reason + "<br>💡 <b>Tip:</b> " + result.cooking_tip);
         } catch (e) { showError(e); }
@@ -201,7 +201,7 @@
                 })
             });
             const data = await res.json();
-            const result = JSON.parse(cleanJson(data.result));
+            const result = parseResult(data.result);
             
             let content = `${result.address} <br>⭐ ${result.rating || 'N/A'}<br><br>${result.reason}`;
             showResult(result.name, content, result.warning);
@@ -210,10 +210,18 @@
 
     // --- Utility Functions ---
 
-    // Cleans potential markdown formatting from AI response
-    function cleanJson(text) {
-        if (!text) return "{}";
-        return text.replace(/```json/g, '').replace(/```/g, '').trim();
+    // Safely parse result - handles both string and object responses
+    function parseResult(result) {
+        if (typeof result === 'object' && result !== null) return result;
+        if (typeof result === 'string') {
+            try {
+                const cleaned = result.replace(/```json/g, '').replace(/```/g, '').trim();
+                return JSON.parse(cleaned);
+            } catch (e) {
+                return { raw_response: result, parse_error: true };
+            }
+        }
+        return {};
     }
     
     function showLoading(msg) {
