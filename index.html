@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Food Concierge</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #a29bfe;
+            --bg: #dfe6e9;
+            --card: #ffffff;
+            --text: #2d3436;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
+        .container { background: var(--card); width: 100%; max-width: 500px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: var(--primary); margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #636e72; font-size: 0.9rem; margin-bottom: 20px; }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: #f1f2f6; border-radius: 12px; cursor: pointer; font-weight: bold; color: #b2bec3; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        
+        .panel { display: none; }
+        .panel.active { display: block; }
+        
+        /* Form Elements */
+        .section-label { font-weight: bold; margin-bottom: 8px; display: block; margin-top: 15px; }
+        .input-box { width: 100%; padding: 12px; border: 2px solid #dfe6e9; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
+        .input-box:focus { border-color: var(--primary); outline: none; }
+        
+        .tags-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag-check { display: none; }
+        .tag-label { padding: 6px 12px; background: #f1f2f6; border-radius: 20px; font-size: 0.85rem; cursor: pointer; user-select: none; border: 1px solid transparent; }
+        .tag-check:checked + .tag-label { background: var(--secondary); color: white; border-color: var(--primary); }
+        
+        .btn-main { width: 100%; background: var(--primary); color: white; padding: 15px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        .btn-main:disabled { background: #b2bec3; }
+        
+        .result-card { margin-top: 20px; background: #f9f9f9; padding: 15px; border-radius: 12px; border-left: 5px solid var(--primary); display: none; }
+        .result-title { font-size: 1.4rem; font-weight: bold; color: var(--primary); margin-bottom: 5px; }
+        .result-text { font-size: 0.95rem; line-height: 1.5; color: #555; }
+        .warning-text { color: #d63031; font-size: 0.85rem; margin-top: 5px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🍱 Vibe Food</h1>
+    <div class="subtitle">ND-Friendly Dining Assistant</div>
+
+    <div style="background: #f8f9fa; padding: 10px; border-radius: 10px; margin-bottom: 20px;">
+        <span class="section-label" style="margin-top:0">👤 My Profile (Sensory & Diet)</span>
+        <div class="tags-grid">
+            <label><input type="checkbox" class="tag-check profile-tag" value="Gluten"> <span class="tag-label">No Gluten</span></label>
+            <label><input type="checkbox" class="tag-check profile-tag" value="Dairy"> <span class="tag-label">No Dairy</span></label>
+            <label><input type="checkbox" class="tag-check profile-tag" value="Spicy"> <span class="tag-label">No Spicy</span></label>
+            <label><input type="checkbox" class="tag-check profile-tag" value="Crunchy Only"> <span class="tag-label">Need Crunch</span></label>
+            <label><input type="checkbox" class="tag-check profile-check" value="Loud Noises"> <span class="tag-label">🚫 Loud Places</span></label>
+            <label><input type="checkbox" class="tag-check profile-check" value="Crowds"> <span class="tag-label">🚫 Crowds</span></label>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('cook')">🏠 Cook at Home</button>
+        <button class="tab-btn" onclick="switchTab('out')">🗺️ Eat Out</button>
+    </div>
+
+    <div id="panel-cook" class="panel active">
+        <span class="section-label">What's your vibe right now?</span>
+        <input type="text" id="recipe-query" class="input-box" placeholder="e.g. I need something warm and soft...">
+        <button class="btn-main" onclick="getRecipe()">🎲 Recommend Recipe</button>
+    </div>
+
+    <div id="panel-out" class="panel">
+        <span class="section-label">What are you craving?</span>
+        <input type="text" id="restaurant-query" class="input-box" placeholder="e.g. Quiet sushi place...">
+        
+        <div style="margin-top: 15px; font-size: 0.9rem; color: #666;">
+            📍 Location: <span id="loc-status">Waiting for permission...</span>
+        </div>
+        
+        <button class="btn-main" onclick="getRestaurant()">🔍 Find Nearby Places</button>
+    </div>
+
+    <div id="result-area" class="result-card">
+        <div id="res-title" class="result-title">Loading...</div>
+        <div id="res-body" class="result-text"></div>
+        <div id="res-warn" class="warning-text"></div>
+    </div>
+
+</div>
+
+<script>
+    // ==========================================
+    // 🔴 CONFIGURATION: PASTE YOUR HUGGING FACE URL BELOW
+    // NOTE: Do NOT include the trailing slash '/'
+    // Example: "https://your-username-vibe-food.hf.space"
+    // ==========================================
+    const BACKEND_URL = "PASTE_YOUR_HUGGING_FACE_URL_HERE"; 
+
+    let userLocation = null;
+
+    /**
+     * Switch between Cooking and Dining Out modes
+     */
+    function switchTab(mode) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        
+        if(mode === 'cook') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('panel-cook').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('panel-out').classList.add('active');
+            initLocation(); // Request GPS when switching to map mode
+        }
+    }
+
+    /**
+     * Initialize Geolocation
+     */
+    function initLocation() {
+        const status = document.getElementById('loc-status');
+        if (!navigator.geolocation) {
+            status.innerText = "GPS not supported";
+            return;
+        }
+        status.innerText = "Locating...";
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                status.innerText = "✅ Detected";
+            },
+            (err) => {
+                status.innerText = "❌ Denied (Using Mock Location)";
+                // Fallback mock location (e.g., New York City) for demo purposes
+                userLocation = { lat: 40.7128, lng: -74.0060 };
+            }
+        );
+    }
+
+    /**
+     * Aggregate user profile preferences from checkboxes
+     */
+    function getProfile() {
+        const allergens = Array.from(document.querySelectorAll('.profile-tag:checked')).map(c => c.value);
+        const aversions = Array.from(document.querySelectorAll('.profile-check:checked')).map(c => c.value);
+        return {
+            allergens: allergens,
+            sensory_aversions: aversions,
+            dietary_mode: "Standard" 
+        };
+    }
+
+    /**
+     * API Call: Fetch Recipe Recommendation
+     */
+    async function getRecipe() {
+        showLoading("Finding the perfect recipe...");
+        const query = document.getElementById('recipe-query').value || "Surprise me with safe food";
+        
+        try {
+            // Using template literals to inject BACKEND_URL
+            const res = await fetch(`${BACKEND_URL}/api/recommend-recipe`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    mood_keyword: query,
+                    profile: getProfile()
+                })
+            });
+            const data = await res.json();
+            const result = JSON.parse(cleanJson(data.result));
+            
+            showResult(result.dish, result.reason + "<br>💡 <b>Tip:</b> " + result.cooking_tip);
+        } catch (e) { showError(e); }
+    }
+
+    /**
+     * API Call: Fetch Restaurant Recommendation
+     */
+    async function getRestaurant() {
+        if(!userLocation) { alert("Need location access!"); return; }
+        showLoading("Scanning nearby places on Google Maps...");
+        
+        const query = document.getElementById('restaurant-query').value || "Quiet restaurant";
+        
+        try {
+            // Using template literals to inject BACKEND_URL
+            const res = await fetch(`${BACKEND_URL}/api/recommend-restaurant`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    mood_keyword: query,
+                    location: userLocation,
+                    profile: getProfile()
+                })
+            });
+            const data = await res.json();
+            const result = JSON.parse(cleanJson(data.result));
+            
+            let content = `${result.address} <br>⭐ ${result.rating || 'N/A'}<br><br>${result.reason}`;
+            showResult(result.name, content, result.warning);
+        } catch (e) { showError(e); }
+    }
+
+    // --- Utility Functions ---
+
+    // Cleans potential markdown formatting from AI response
+    function cleanJson(text) {
+        if (!text) return "{}";
+        return text.replace(/```json/g, '').replace(/```/g, '').trim();
+    }
+    
+    function showLoading(msg) {
+        document.getElementById('result-area').style.display = 'block';
+        document.getElementById('res-title').innerText = "🤔 AI Thinking...";
+        document.getElementById('res-body').innerText = msg;
+        document.getElementById('res-warn').innerText = "";
+    }
+    
+    function showResult(title, body, warn="") {
+        document.getElementById('res-title').innerText = title;
+        document.getElementById('res-body').innerHTML = body;
+        document.getElementById('res-warn').innerText = warn ? "⚠️ Note: " + warn : "";
+    }
+    
+    function showError(e) {
+        console.error(e);
+        document.getElementById('res-title').innerText = "Connection Error";
+        document.getElementById('res-body').innerText = "Failed to connect to backend. Please check if the server is running.";
+    }
+</script>
+
+</body>
+</html>
